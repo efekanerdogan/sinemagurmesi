@@ -1,0 +1,950 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinema Gurmesi - AI Destekli Film Platformu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            dark: '#0f1014',
+                            card: '#181a20',
+                            red: '#e50914',
+                            accent: '#4f46e5'
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'spin-slow': 'spin 3s linear infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f1014;
+            color: #e2e8f0;
+            scroll-behavior: smooth;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f1014;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        .glass-nav {
+            background: rgba(15, 16, 20, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Mobile Optimization for Cards */
+        @media (max-width: 768px) {
+            .mobile-info-visible {
+                opacity: 1 !important;
+                transform: translateY(0) !important;
+            }
+
+            .mobile-poster-darken {
+                opacity: 0.8 !important;
+            }
+        }
+
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #4b5563;
+            border-radius: 3px;
+        }
+
+        /* Toast Notification */
+        .toast-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15, 16, 20, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100;
+            font-weight: 500;
+        }
+
+        .toast-notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-notification.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .toast-notification.info {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .toast-notification.error {
+            border-left: 4px solid #ef4444;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col selection:bg-brand-red selection:text-white">
+    <!-- Navbar -->
+    <nav class="glass-nav fixed w-full z-50 top-0 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="window.location.reload()">
+                    <span
+                        class="text-3xl font-bold tracking-widest text-gray-300 font-mono hover:scale-105 transition-transform select-none">&lt;E<span
+                            class="text-brand-red">E</span>/&gt;</span>
+                </div>
+
+                <div class="flex items-center space-x-4 md:space-x-6">
+                    <button onclick="showHome()"
+                        class="nav-link text-sm font-medium text-brand-red hover:text-white transition-colors">Ana
+                        Sayfa</button>
+                    <button onclick="showWatchlist()"
+                        class="nav-link text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center gap-2">
+                        <span>İzlenecekler</span>
+                        <span id="watchlist-count"
+                            class="bg-gray-800 text-white text-xs px-2 py-0.5 rounded-full hidden">0</span>
+                    </button>
+
+                    <button onclick="openSettings()"
+                        class="bg-gray-800 hover:bg-gray-700 text-white p-2 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all border border-gray-700 flex items-center gap-2 group">
+                        <i class="fas fa-cog text-gray-400 group-hover:text-white transition-colors"></i>
+                        <span class="hidden md:inline text-xs text-gray-300">Ayarlar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 w-full pt-20">
+
+        <!-- Search & Hero Section (Only visible on Home) -->
+        <div id="hero-section" class="relative pt-20 pb-12 lg:pt-32 lg:pb-16 overflow-hidden">
+            <!-- Background Glow -->
+            <div
+                class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-brand-red/10 blur-[120px] rounded-full pointer-events-none">
+            </div>
+
+            <div class="max-w-4xl mx-auto px-4 text-center relative z-10">
+                <h1 class="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
+                    Bugün ne izlesem? <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-red to-orange-500">Gurme'ye
+                        sor.</span>
+                </h1>
+
+                <!-- Search Box -->
+                <div class="relative max-w-2xl mx-auto group z-20">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-r from-brand-red to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500">
+                    </div>
+                    <form onsubmit="handleSearch(event)"
+                        class="relative flex items-center bg-brand-card border border-gray-700 rounded-2xl p-2 shadow-2xl transition-colors focus-within:border-gray-500">
+                        <div class="pl-4 pr-3 text-gray-400">
+                            <i class="fas fa-magic text-lg"></i>
+                        </div>
+                        <input type="text" id="user-prompt"
+                            class="flex-1 bg-transparent border-none text-white placeholder-gray-500 focus:ring-0 text-lg py-3"
+                            placeholder="Örn: Beynimi yakacak, tek mekanda geçen bir gerilim..." autocomplete="off">
+
+                        <!-- Surprise Me Button -->
+                        <button type="button" onclick="surpriseMe()"
+                            class="mr-2 text-gray-400 hover:text-brand-red transition-colors p-2" title="Şansımı Dene">
+                            <i class="fas fa-dice text-xl animate-pulse-slow"></i>
+                        </button>
+
+                        <button type="submit"
+                            class="bg-white text-black hover:bg-gray-200 px-6 py-3 rounded-xl font-bold transition-transform active:scale-95 hidden sm:block">
+                            Bul
+                        </button>
+                        <button type="submit"
+                            class="bg-white text-black hover:bg-gray-200 p-3 rounded-xl font-bold transition-transform active:scale-95 sm:hidden">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Chips -->
+                <div class="mt-8 flex flex-wrap justify-center gap-3">
+                    <button onclick="quickSearch('Ters köşe yapan, finali şaşırtıcı psikolojik gerilim')"
+                        class="chip px-4 py-2 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-full text-sm text-gray-300 transition-all hover:border-brand-red">🤯
+                        Beyin Yakan</button>
+                    <button onclick="quickSearch('İçimi ısıtacak, depresyondan çıkaracak feel-good movie')"
+                        class="chip px-4 py-2 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-full text-sm text-gray-300 transition-all hover:border-yellow-500">☕️
+                        Keyifli</button>
+                    <button onclick="quickSearch('Cyberpunk atmosferli bilim kurgu')"
+                        class="chip px-4 py-2 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-full text-sm text-gray-300 transition-all hover:border-cyan-500">🤖
+                        Bilim Kurgu</button>
+                    <button onclick="quickSearch('Gerçek hikayeye dayanan suç filmi')"
+                        class="chip px-4 py-2 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-full text-sm text-gray-300 transition-all hover:border-orange-500">🕵️
+                        Suç & Gizem</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+            <!-- Section Title -->
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                    <span id="section-icon"><i class="fas fa-star text-brand-red"></i></span>
+                    <span id="results-title">Editörün Seçimleri</span>
+                </h2>
+                <!-- Clear Filters Button -->
+                <button
+                    onclick="renderMovies(defaultMovies); document.getElementById('hero-section').classList.remove('hidden');"
+                    id="reset-btn" class="hidden text-sm text-gray-400 hover:text-white">
+                    <i class="fas fa-undo mr-1"></i> Sıfırla
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loader" class="hidden py-32 text-center">
+                <div
+                    class="inline-block w-16 h-16 border-4 border-gray-700 border-t-brand-red rounded-full animate-spin mb-6">
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">Yapay zeka arşivleri tarıyor...</h3>
+                <p class="text-gray-400 max-w-md mx-auto" id="loading-text">Mükemmel filmi bulmak üzereyiz.</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden py-20 text-center">
+                <div class="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-film text-4xl text-gray-600"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">Listeniz Boş</h3>
+                <p class="text-gray-400">Henüz hiç film eklemediniz. Beğendiğiniz filmleri kalp ikonuna basarak buraya
+                    ekleyebilirsiniz.</p>
+                <button onclick="showHome()"
+                    class="mt-6 px-6 py-2 bg-brand-red text-white rounded-xl hover:bg-red-700 transition-colors">
+                    Film Keşfet
+                </button>
+            </div>
+
+            <!-- Movie Grid -->
+            <div id="movie-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                <!-- Cards will be injected here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 bg-[#0a0a0a] py-8 text-center mt-auto">
+        <div class="flex flex-col md:flex-row justify-center items-center gap-1 md:gap-4 text-gray-500 font-medium">
+            <p>Sinema Gurmesi &copy; 2025</p>
+            <span class="hidden md:inline min-w-[4px] h-[4px] bg-gray-600 rounded-full"></span>
+            <p>Tasarımcı: Efekan <span class="text-brand-red animate-pulse font-bold">ERDOĞAN</span></p>
+        </div>
+        <p class="text-xs text-gray-700 mt-2">Powered by Gemini AI & OMDb API</p>
+
+    </footer>
+
+    <!-- Movie Detail Modal -->
+    <div id="movie-modal"
+        class="fixed inset-0 bg-black/95 z-[70] hidden flex items-center justify-center p-0 md:p-4 overflow-y-auto backdrop-blur-md">
+        <div
+            class="bg-gray-900 md:rounded-2xl w-full h-full md:h-auto md:max-w-4xl border-0 md:border border-gray-700 shadow-2xl overflow-hidden relative flex flex-col md:block">
+
+            <!-- Close Button -->
+            <button onclick="closeModal()"
+                class="absolute top-4 right-4 z-50 bg-black/50 hover:bg-brand-red text-white w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm transition-all shadow-lg border border-white/10">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <div id="modal-content" class="flex-1 flex flex-col md:flex-row h-full overflow-y-auto">
+                <!-- Content injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal"
+        class="fixed inset-0 bg-black/90 z-[80] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-brand-card rounded-2xl p-8 w-full max-w-md border border-gray-700 shadow-2xl relative">
+            <button onclick="closeSettings()"
+                class="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                <i class="fas fa-sliders-h text-brand-red"></i> Ayarlar
+            </h3>
+
+            <!-- Gemini API -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-300 mb-2">Google Gemini API
+                    Key</label>
+                <div class="relative">
+                    <i class="fas fa-brain absolute left-3 top-3.5 text-gray-500"></i>
+                    <input type="password" id="gemini-key-input"
+                        class="w-full bg-gray-900 border border-gray-600 rounded-xl pl-10 pr-4 py-3 text-white focus:border-brand-red focus:outline-none transition-colors"
+                        placeholder="AIzaSy...">
+                </div>
+            </div>
+
+            <!-- OMDb API -->
+            <div class="mb-8">
+                <label class="block text-sm font-medium text-gray-300 mb-2">OMDb API Key (Poster &
+                    IMDb)</label>
+                <div class="relative">
+                    <i class="fas fa-film absolute left-3 top-3.5 text-gray-500"></i>
+                    <input type="password" id="omdb-key-input"
+                        class="w-full bg-gray-900 border border-gray-600 rounded-xl pl-10 pr-4 py-3 text-white focus:border-brand-red focus:outline-none transition-colors"
+                        placeholder="Örn: 1171c515">
+                </div>
+                <div class="flex justify-between mt-1">
+                    <p class="text-xs text-gray-500">Posterler ve IMDb puanları için.</p>
+                </div>
+            </div>
+
+            <button onclick="saveSettings()"
+                class="w-full py-3 bg-brand-red hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-900/30 transition-all active:scale-95">
+                Kaydet ve Uygula
+            </button>
+        </div>
+    </div>
+
+    <!-- Global Trailer Modal (Popup) -->
+    <div id="trailer-modal"
+        class="fixed inset-0 bg-black/95 z-[90] hidden flex items-center justify-center p-4 backdrop-blur-xl">
+        <div
+            class="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl shadow-red-900/40 border border-gray-800">
+            <button onclick="closeTrailer()"
+                class="absolute top-4 right-4 z-50 bg-black/60 hover:bg-brand-red text-white w-10 h-10 rounded-full flex items-center justify-center transition-all border border-white/10">
+                <i class="fas fa-times"></i>
+            </button>
+            <div id="trailer-container" class="w-full h-full"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-notification">
+        <i id="toast-icon" class="fas"></i>
+        <span id="toast-message"></span>
+    </div>
+
+    <script>
+        // --- State ---
+        const DEMO_KEY = '';
+        const OMDB_DEMO_KEY = ''; // Kullanıcı Keyi
+
+        let geminiKey = localStorage.getItem('gemini_api_key') || DEMO_KEY;
+        let omdbKey = localStorage.getItem('omdb_api_key') || OMDB_DEMO_KEY;
+        let watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
+
+        // Ensure defaults are set
+        if (!localStorage.getItem('gemini_api_key')) localStorage.setItem('gemini_api_key', DEMO_KEY);
+        if (!localStorage.getItem('omdb_api_key')) localStorage.setItem('omdb_api_key', OMDB_DEMO_KEY);
+
+        const movieCollections = [
+            {
+                name: "Zihin Labirentleri",
+                movies: [
+                    { title: "Coherence", year: "2013", rating: "8.7", ozet: "Bir akşam yemeği sırasında geçen kuyrukluyıldız, paralel evrenlerin kapılarını aralar.", reason: "Düşük bütçeyle zeka dolu bir bilim kurgu başyapıtı.", tagline: "Gerçekliğin kırıldığı an.", director: "James Ward Byrkit", genre: "Bilim Kurgu / Gerilim", color: "from-blue-900 to-gray-900" },
+                    { title: "Predestination", year: "2014", rating: "7.5", ozet: "Zamanda yolculuk yapan bir ajanın, kendi geçmişi ve geleceğiyle yüzleştiği paradoksal bir hikaye.", reason: "Zaman yolculuğu konseptini en uç noktaya taşıyan film.", tagline: "Kendi kuyruğunu yiyen yılan.", director: "Peter Spierig", genre: "Bilim Kurgu / Gizem", color: "from-indigo-900 to-purple-900" },
+                    { title: "Arrival", year: "2016", rating: "8.8", ozet: "Dünyaya inen uzaylılarla iletişim kurmaya çalışan bir dilbilimcinin, zaman algısını değiştiren yolculuğu.", reason: "Bilim kurgunun en duygusal ve felsefi hali.", tagline: "Silahın dili yoktur.", director: "Denis Villeneuve", genre: "Bilim Kurgu / Dram", color: "from-gray-800 to-slate-900" },
+                    { title: "The Endless", year: "2017", rating: "6.5", ozet: "Yıllar önce kaçtıkları tarikata geri dönen iki kardeşin, açıklanamayan doğaüstü olaylarla karşılaşması.", reason: "Lovecraftian korku ve bilim kurgunun harika birleşimi.", tagline: "Döngüyü kır.", director: "Justin Benson", genre: "Korku / Bilim Kurgu", color: "from-stone-900 to-orange-900" }
+                ]
+            },
+            {
+                name: "Suç ve Gizem",
+                movies: [
+                    { title: "Memories of Murder", year: "2003", rating: "8.1", ozet: "Güney Kore taşrasında işlenen seri cinayetleri çözmeye çalışan iki dedektifin çaresiz ve saplantılı mücadelesi.", reason: "Bong Joon-ho'nun atmosferik ve sürükleyici başyapıtı.", tagline: "Gerçekler asla kaybolmaz.", director: "Bong Joon-ho", genre: "Suç / Dram", color: "from-zinc-800 to-neutral-900" },
+                    { title: "Prisoners", year: "2013", rating: "8.1", ozet: "Kızı kaçırılan bir babanın, adaleti kendi elleriyle sağlamaya çalışırken ahlaki sınırları zorlaması.", reason: "Gerilimi iliklerinize kadar hissettiren bir modern klasik.", tagline: "Her anın bir bedeli var.", director: "Denis Villeneuve", genre: "Suç / Gerilim", color: "from-slate-900 to-gray-800" },
+                    { title: "Zodiac", year: "2007", rating: "7.7", ozet: "San Francisco'yu korkuya boğan Zodiac katilini yakalamaya çalışan karikatürist ve gazetecilerin yıllara yayılan takibi.", reason: "Detaylara verilen önem ve atmosfer büyüleyici.", tagline: "Takıntı en tehlikeli silahtır.", director: "David Fincher", genre: "Suç / Tarih", color: "from-blue-950 to-black" },
+                    { title: "Nightcrawler", year: "2014", rating: "7.8", ozet: "Gece muhabirliği yapmaya başlayan hırslı bir adamın, iyi bir hikaye yakalamak için ne kadar ileri gidebileceğini gösteren karanlık bir portre.", reason: "Jake Gyllenhaal'ın kariyer performansı.", tagline: "Haber beklemez.", director: "Dan Gilroy", genre: "Suç / Gerilim", color: "from-yellow-900 to-black" }
+                ]
+            },
+            {
+                name: "Distopik Gelecek",
+                movies: [
+                    { title: "Blade Runner 2049", year: "2017", rating: "8.0", ozet: "Genç bir Blade Runner'ın, toplumu kaosa sürükleyebilecek gömülü bir sırrı keşfetmesi.", reason: "Görsel bir şölen ve felsefi bir derinlik.", tagline: "İnsan olmaktan daha fazlası.", director: "Denis Villeneuve", genre: "Bilim Kurgu / Aksiyon", color: "from-orange-900 to-teal-900" },
+                    { title: "Children of Men", year: "2006", rating: "7.9", ozet: "Kısırlığın insanlığın sonunu getirdiği bir gelecekte, mucizevi bir şekilde hamile kalan bir kadını korumaya çalışan bir adam.", reason: "Tek plan çekim tekniğiyle sinema dersi.", tagline: "Son umut.", director: "Alfonso Cuarón", genre: "Bilim Kurgu / Gerilim", color: "from-green-900 to-gray-900" },
+                    { title: "Ex Machina", year: "2014", rating: "7.7", ozet: "Genç bir yazılımcının, insansı bir yapay zekanın duygusal testine katılmak üzere ıssız bir eve davet edilmesi.", reason: "Yapay zeka etiği üzerine minimalist ve gerilimli bir bakış.", tagline: "İnsanlık test ediliyor.", director: "Alex Garland", genre: "Bilim Kurgu / Dram", color: "from-gray-800 to-neutral-900" },
+                    { title: "Gattaca", year: "1997", rating: "7.8", ozet: "Genetik mühendisliğinin mükemmel insanları yarattığı bir gelecekte, 'geçersiz' bir adamın uzaya gitme hayali.", reason: "Eskimeyen bir distopya klasiği.", tagline: "Kader genlerinde yazılı değil.", director: "Andrew Niccol", genre: "Bilim Kurgu / Dram", color: "from-cyan-900 to-blue-950" }
+                ]
+            },
+            {
+                name: "Sınırları Zorlayanlar",
+                movies: [
+                    { title: "The Master", year: "2012", rating: "7.2", ozet: "İkinci Dünya Savaşı sonrası boşluğa düşen bir gazinin, karizmatik bir liderin kurduğu tarikata katılması.", reason: "Oyunculuk dersi niteliğinde performanslar.", tagline: "Her ustanın bir kölesi vardır.", director: "Paul Thomas Anderson", genre: "Dram", color: "from-blue-800 to-indigo-900" },
+                    { title: "Burning", year: "2018", rating: "7.5", ozet: "Genç bir yazar adayının, eski bir komşusu ve onun gizemli zengin arkadaşıyla kurduğu tekinsiz üçgen.", reason: "Murakami öyküsünden uyarlanan, yavaş yanan bir gerilim ateşi.", tagline: "Gerçeği yak.", director: "Lee Chang-dong", genre: "Dram / Gizem", color: "from-orange-800 to-red-950" },
+                    { title: "Whiplash", year: "2014", rating: "8.5", ozet: "Baterist olma hayali kuran genç bir öğrenci ile acımasız hocası arasındaki psikolojik savaş.", reason: "Tansiyonun hiç düşmediği bir kurgu harikası.", tagline: "Mükemmeliyetin bedeli.", director: "Damien Chazelle", genre: "Dram / Müzik", color: "from-yellow-900 to-black" },
+                    { title: "Black Swan", year: "2010", rating: "8.0", ozet: "Kuğu Gölü balesinin başrolü için yarışan bir balerinin, mükemmellik arayışında akıl sağlığını yitirmesi.", reason: "Psikolojik gerilimin zirve noktalarından.", tagline: "Mükemmeliyetin karanlık yüzü.", director: "Darren Aronofsky", genre: "Dram / Gerilim", color: "from-pink-900 to-black" }
+                ]
+            },
+            {
+                name: "Akıl Oyunları",
+                movies: [
+                    { title: "The Prestige", year: "2006", rating: "8.5", ozet: "Viktorya dönemi Londra'sında birbirini alt etmeye çalışan iki rakip sihirbazın ölümcül rekabeti.", reason: "Nolan'ın kurgu ustalığının şahikası.", tagline: "Dikkatli bakıyor musun?", director: "Christopher Nolan", genre: "Gizem / Bilim Kurgu", color: "from-gray-900 to-blue-900" },
+                    { title: "Shutter Island", year: "2010", rating: "8.2", ozet: "Bir dedektifin, akıl hastanesinden kaçan bir katili bulmak için gittiği adada gerçeklikle bağını sorgulaması.", reason: "Scorsese ve DiCaprio ortaklığının en iyi örneklerinden.", tagline: "Burası seni delirtecek.", director: "Martin Scorsese", genre: "Gerilim / Gizem", color: "from-slate-800 to-black" },
+                    { title: "Oldboy", year: "2003", rating: "8.4", ozet: "Sebepsiz yere 15 yıl hapsedilen bir adamın, serbest kaldıktan sonraki beş gün içinde intikam arayışı.", reason: "İntikam filmlerinin şahı.", tagline: "Gülersen herkes seninle güler...", director: "Park Chan-wook", genre: "Aksiyon / Dram", color: "from-purple-900 to-red-900" },
+                    { title: "Gone Girl", year: "2014", rating: "8.1", ozet: "Karısının aniden kaybolmasıyla baş şüpheli haline gelen bir adamın, medya sirkine dönen hayatı.", reason: "Modern evlilik üzerine karanlık bir satir.", tagline: "Onu ne kadar tanıyorsun?", director: "David Fincher", genre: "Gerilim / Dram", color: "from-blue-900 to-gray-800" }
+                ]
+            }
+        ];
+
+        let defaultMovies = [];
+        let sessionTheme = "";
+        let lastSearchResults = [];
+        let currentView = 'home'; // 'home' or 'watchlist'
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Pick random collection
+            const randomCollection = movieCollections[Math.floor(Math.random() * movieCollections.length)];
+            defaultMovies = randomCollection.movies;
+            sessionTheme = `Günün Seçkisi: ${randomCollection.name}`;
+
+            // Update Title
+            document.getElementById('results-title').innerText = sessionTheme;
+
+            updateWatchlistCount();
+            renderMovies(defaultMovies);
+
+            // Varsayılanları güncelle
+            defaultMovies.forEach(async (movie) => {
+                const data = await fetchOmdbData(movie.title, movie.year);
+                if (data) updateCardWithOmdb(movie.title, data);
+            });
+        });
+
+        // --- Core Functions ---
+
+        async function handleSearch(e) {
+            e.preventDefault();
+            const prompt = document.getElementById('user-prompt').value;
+            if (!prompt) return;
+
+            document.getElementById('movie-grid').innerHTML = '';
+            document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('results-title').innerText = `"${prompt}" Sonuçları`;
+            document.getElementById('reset-btn').classList.remove('hidden');
+
+            document.getElementById('movie-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            try {
+                const movies = await fetchGeminiRecommendations(prompt);
+                renderMovies(movies);
+
+                // OMDb Güncelleme
+                if (omdbKey) {
+                    movies.forEach(async (movie) => {
+                        const data = await fetchOmdbData(movie.title, movie.year);
+                        if (data) updateCardWithOmdb(movie.title, data);
+                    });
+                }
+
+            } catch (error) {
+                console.error("Hata Detayı:", error);
+                alert(`Üzgünüm, bir sorun oluştu:\n${error.message}\n\nLütfen tekrar dene.`);
+                renderMovies(defaultMovies);
+            } finally {
+                document.getElementById('loader').classList.add('hidden');
+            }
+        }
+
+        async function fetchGeminiRecommendations(userPrompt) {
+            const randomSeed = Date.now();
+            const systemPrompt = `
+                Sen dünyanın en bilgili ve en zevkli sinefilisin. Şu anki zaman: ${randomSeed}.
+                Kullanıcı senden film önerisi istiyor: "${userPrompt}".
+                
+                GÖREV:
+                - Asla çok bilinen, herkesin izlediği (IMDB Top 20) filmleri önerme.
+                - Her seferinde LİSTEYİ SIFIRDAN OLUŞTUR ve yeni filmler seç.
+                
+                ÇIKTI: JSON Array.
+                ŞEMA: [{ "title": "Film Adı (Orijinal)", "year": "Yıl", "rating": "8.X", "ozet": "Filmin konusu nedir? (Türkçe, 2 cümle)", "reason": "Neden? (Kısa)", "tagline": "Slogan", "director": "Yönetmen", "genre": "Tür", "color": "Tailwind gradient" }]
+            `;
+
+            const safetySettings = [
+                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+            ];
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: systemPrompt }] }],
+                    safetySettings: safetySettings,
+                    generationConfig: { temperature: 1.3, topP: 0.95, topK: 64 }
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || `API Hatası: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (!data.candidates || data.candidates.length === 0) throw new Error("Yapay zeka öneri üretemedi.");
+
+            let rawText = data.candidates[0].content.parts[0].text;
+
+            // JSON Başlangıç ve Bitişini Bul (Daha Güvenli Yöntem)
+            const startIndex = rawText.indexOf('[');
+            const endIndex = rawText.lastIndexOf(']') + 1;
+
+            if (startIndex === -1 || endIndex === 0) {
+                console.error("AI Ham Yanıtı:", rawText);
+                throw new Error("Yapay zeka geçerli bir liste oluşturamadı, lütfen tekrar dene.");
+            }
+
+            rawText = rawText.substring(startIndex, endIndex);
+            return JSON.parse(rawText);
+        }
+
+        // --- OMDb Integration ---
+        async function fetchOmdbData(title, year) {
+            if (!omdbKey) return null;
+            try {
+                // HTTPS kullanarak güvenli bağlantı
+                const url = `https://www.omdbapi.com/?apikey=${omdbKey}&t=${encodeURIComponent(title)}&y=${year}`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data.Response === "True") {
+                    return data;
+                }
+            } catch (e) {
+                console.error("OMDb Error:", e);
+            }
+            return null;
+        }
+
+        function updateCardWithOmdb(title, data) {
+            const safeTitle = title.replace(/\s+/g, '-');
+
+            // Poster
+            if (data.Poster && data.Poster !== "N/A") {
+                const cardImg = document.getElementById(`img-${safeTitle}`);
+                if (cardImg) {
+                    cardImg.style.backgroundImage = `url('${data.Poster}')`;
+                    cardImg.classList.remove('opacity-30');
+                    cardImg.classList.add('opacity-100', 'bg-cover', 'bg-center');
+                    // Gradyanı hafiflet
+                    const gradientDiv = cardImg.previousElementSibling;
+                    if (gradientDiv) gradientDiv.classList.add('opacity-40');
+                }
+            }
+
+            // IMDb Puanı
+            if (data.imdbRating && data.imdbRating !== "N/A") {
+                const ratingBadge = document.getElementById(`rating-${safeTitle}`);
+                if (ratingBadge) ratingBadge.innerText = data.imdbRating;
+            }
+
+            // Cache Update
+            let movie = lastSearchResults.find(m => m.title === title) || watchlist.find(m => m.title === title);
+            if (movie) {
+                movie.omdbData = data;
+                movie.rating = data.imdbRating;
+            }
+        }
+
+        // --- Rendering ---
+        function renderMovies(movies) {
+            lastSearchResults = movies;
+            const grid = document.getElementById('movie-grid');
+            grid.innerHTML = '';
+
+            if (movies.length === 0) {
+                document.getElementById('empty-state').classList.remove('hidden');
+                return;
+            } else {
+                document.getElementById('empty-state').classList.add('hidden');
+            }
+
+            movies.forEach((movie, index) => {
+                const isSaved = watchlist.some(m => m.title === movie.title);
+                const delay = index * 100;
+                const safeTitle = movie.title.replace(/\s+/g, '-');
+
+                const posterUrl = movie.omdbData?.Poster && movie.omdbData?.Poster !== 'N/A' ? movie.omdbData.Poster : null;
+                const rating = movie.omdbData?.imdbRating || movie.rating;
+
+                const card = document.createElement('div');
+                card.className = `movie-card group relative h-[450px] rounded-2xl overflow-hidden cursor-pointer shadow-xl transition-all duration-300 hover:-translate-y-2 animate-slide-up bg-gray-900`;
+                card.style.animationDelay = `${delay}ms`;
+
+                card.onclick = (e) => {
+                    if (e.target.closest('.bookmark-btn')) return;
+                    showModal(movie);
+                };
+
+                const bgStyle = posterUrl ? `background-image: url('${posterUrl}'); opacity: 1` : '';
+                const bgClass = posterUrl ? 'bg-cover bg-center opacity-100' : 'bg-[url("https://www.transparenttextures.com/patterns/stardust.png")] opacity-30';
+
+                card.innerHTML = `
+                    <div class="absolute inset-0 bg-gradient-to-br ${movie.color || 'from-gray-800 to-black'} transition-transform duration-700 group-hover:scale-105"></div>
+                    
+                    <div id="img-${safeTitle}" class="absolute inset-0 ${bgClass} mobile-poster-darken transition-all duration-700 bg-no-repeat bg-cover" style="${bgStyle}"></div>
+                    
+                    <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-60 md:opacity-40 group-hover:opacity-90 transition-opacity duration-300"></div>
+
+                    <div class="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-20">
+                        <span class="bg-white/10 backdrop-blur-md text-white/90 text-xs font-bold px-2.5 py-1 rounded-lg border border-white/10">
+                            ${movie.year}
+                        </span>
+                        <button onclick="toggleWatchlist('${movie.title.replace(/'/g, "\\'")}')" class="bookmark-btn w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center transition-all hover:bg-brand-red active:scale-95 group/btn">
+                            <i class="${isSaved ? 'fas' : 'far'} fa-bookmark text-white ${isSaved ? 'text-white' : ''} group-hover/btn:text-white"></i>
+                        </button>
+                    </div>
+
+                    <div class="absolute bottom-0 left-0 w-full p-6 z-20 flex flex-col justify-end h-full">
+                        <div class="transform md:translate-y-4 transition-transform duration-300 group-hover:translate-y-0">
+                            <div class="mb-2 flex items-center gap-2">
+                                <span class="bg-yellow-500 text-black text-xs font-bold px-1.5 rounded">IMDb</span>
+                                <span id="rating-${safeTitle}" class="text-white font-bold text-lg">${rating}</span>
+                            </div>
+
+                            <h3 class="text-2xl font-bold text-white leading-tight mb-1 drop-shadow-md">${movie.title}</h3>
+                            <p class="text-gray-400 text-sm font-medium mb-3 md:opacity-0 mobile-info-visible group-hover:opacity-100 transition-opacity duration-300">${movie.director}</p>
+                            
+                            <div class="h-0 md:group-hover:h-auto overflow-hidden transition-all duration-300">
+                                <p class="text-gray-300 text-sm line-clamp-3 mb-4 font-light leading-relaxed hidden md:block">
+                                    "${movie.tagline}"
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // --- Notifications ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const icon = document.getElementById('toast-icon');
+            const msgSpan = document.getElementById('toast-message');
+
+            container.className = `toast-notification ${type}`;
+            msgSpan.innerText = message;
+
+            // Icon Selection
+            if (type === 'success') icon.className = 'fas fa-check-circle text-green-400 text-xl';
+            else if (type === 'info') icon.className = 'fas fa-info-circle text-blue-400 text-xl';
+            else icon.className = 'fas fa-exclamation-circle text-red-400 text-xl';
+
+            // Show
+            container.classList.add('show');
+
+            // Hide after 3s
+            setTimeout(() => {
+                container.classList.remove('show');
+            }, 3000);
+        }
+
+        function toggleWatchlist(encodedTitle) {
+            let movie = lastSearchResults.find(m => m.title === encodedTitle) || watchlist.find(m => m.title === encodedTitle);
+            if (!movie) return;
+
+            const index = watchlist.findIndex(m => m.title === movie.title);
+            let message = "";
+            let type = "";
+
+            if (index > -1) {
+                watchlist.splice(index, 1);
+                message = `${movie.title} listenizden çıkarıldı`;
+                type = "info";
+            } else {
+                watchlist.push(movie);
+                message = `${movie.title} listenize eklendi`;
+                type = "success";
+            }
+
+            localStorage.setItem('watchlist', JSON.stringify(watchlist));
+            updateWatchlistCount();
+
+            // Refresh UI
+            if (currentView === 'watchlist') renderWatchlist();
+            else renderMovies(lastSearchResults);
+
+            // Show Notification
+            showToast(message, type);
+        }
+
+        function renderWatchlist() {
+            renderMovies(watchlist);
+            watchlist.forEach(async (movie) => {
+                if (!movie.omdbData) {
+                    const data = await fetchOmdbData(movie.title, movie.year);
+                    if (data) updateCardWithOmdb(movie.title, data);
+                }
+            });
+            if (watchlist.length === 0) document.getElementById('empty-state').classList.remove('hidden');
+        }
+
+        function updateWatchlistCount() {
+            const count = document.getElementById('watchlist-count');
+            if (watchlist.length > 0) {
+                count.innerText = watchlist.length;
+                count.classList.remove('hidden');
+            } else {
+                count.classList.add('hidden');
+            }
+        }
+
+        function showWatchlist() {
+            currentView = 'watchlist';
+            document.getElementById('hero-section').classList.add('hidden');
+            document.getElementById('results-title').innerText = "İzlenecekler Listem";
+            document.getElementById('section-icon').innerHTML = '<i class="fas fa-bookmark text-brand-red"></i>';
+            document.getElementById('reset-btn').classList.add('hidden');
+            renderWatchlist();
+        }
+
+        function showHome() {
+            currentView = 'home';
+            document.getElementById('hero-section').classList.remove('hidden');
+            document.getElementById('results-title').innerText = sessionTheme;
+            document.getElementById('section-icon').innerHTML = '<i class="fas fa-star text-brand-red"></i>';
+            renderMovies(defaultMovies);
+        }
+
+        function openSettings() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+            if (geminiKey) document.getElementById('gemini-key-input').value = geminiKey;
+            if (omdbKey) document.getElementById('omdb-key-input').value = omdbKey;
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        function saveSettings() {
+            const gKey = document.getElementById('gemini-key-input').value.trim();
+            const oKey = document.getElementById('omdb-key-input').value.trim();
+
+            if (gKey) localStorage.setItem('gemini_api_key', gKey);
+            if (oKey) localStorage.setItem('omdb_api_key', oKey);
+            else localStorage.removeItem('omdb_api_key');
+
+            closeSettings();
+            alert("Ayarlar kaydedildi!");
+            setTimeout(() => location.reload(), 500);
+        }
+
+        function translateGenre(genre) {
+            const genreMap = {
+                "Action": "Aksiyon", "Adventure": "Macera", "Animation": "Animasyon", "Biography": "Biyografi",
+                "Comedy": "Komedi", "Crime": "Suç", "Documentary": "Belgesel", "Drama": "Dram",
+                "Family": "Aile", "Fantasy": "Fantastik", "Film Noir": "Kara Film", "History": "Tarih",
+                "Horror": "Korku", "Music": "Müzik", "Musical": "Müzikal", "Mystery": "Gizem",
+                "Romance": "Romantik", "Sci-Fi": "Bilim Kurgu", "Short": "Kısa Film", "Sport": "Spor",
+                "Superhero": "Süper Kahraman", "Thriller": "Gerilim", "War": "Savaş", "Western": "Western"
+            };
+            return genreMap[genre.trim()] || genre;
+        }
+
+        async function showModal(movie) {
+            const modal = document.getElementById('movie-modal');
+            const content = document.getElementById('modal-content');
+
+            content.innerHTML = '<div class="w-full h-96 flex items-center justify-center text-brand-red"><i class="fas fa-circle-notch fa-spin text-4xl"></i></div>';
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            let omdbData = movie.omdbData;
+            if (!omdbData && omdbKey) {
+                omdbData = await fetchOmdbData(movie.title, movie.year);
+                if (omdbData) movie.omdbData = omdbData;
+            }
+
+            const bgImage = omdbData?.Poster && omdbData.Poster !== 'N/A' ? omdbData.Poster : 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2070&auto=format&fit=crop';
+
+            // Öncelik: Varsa Yapay Zekadan gelen Türkçe 'ozet', yoksa 'reason'
+            const turkceOzet = movie.ozet || movie.reason || "Özet bulunamadı.";
+
+            // Fragman URL'i
+            const trailerUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(movie.title + ' trailer')}`;
+
+            content.innerHTML = `
+                <div id="modal-visual" class="md:w-1/2 h-[40vh] md:h-auto bg-gray-800 relative group overflow-hidden">
+                    <div id="modal-image" class="absolute inset-0 bg-cover bg-center blur-sm opacity-50 transition-all duration-700" 
+                         style="background-image: url('${bgImage}');">
+                    </div>
+                    <div class="absolute inset-0 flex items-center justify-center z-10 p-4">
+                         <img src="${bgImage}" class="h-full object-contain rounded-lg shadow-2xl shadow-black/50" alt="${movie.title}">
+                    </div>
+                    <!-- Play Button to Open Popup -->
+                    <div class="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <a href="${trailerUrl}" target="_blank" class="w-20 h-20 bg-brand-red/90 hover:bg-brand-red rounded-full flex items-center justify-center shadow-lg shadow-red-900/50 backdrop-blur-sm pl-2 transform hover:scale-110 transition-transform">
+                            <i class="fas fa-play text-3xl text-white"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="md:w-1/2 bg-gray-900 p-6 md:p-8 flex flex-col h-full border-l border-gray-800 overflow-y-auto custom-scrollbar">
+                    <div class="mb-6">
+                        <h2 class="text-3xl font-bold text-white leading-tight mb-2">${movie.title}</h2>
+                        <div class="flex flex-wrap gap-2 text-sm text-gray-400 items-center">
+                            <span>${omdbData?.Year || movie.year}</span>
+                            <span>•</span>
+                            <span>${omdbData?.Runtime || 'Süre Yok'}</span>
+                            <span>•</span>
+                            <span class="bg-yellow-500 text-black px-1.5 rounded font-bold">IMDb ${omdbData?.imdbRating || movie.rating}</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <h4 class="text-xs uppercase tracking-widest text-gray-500 font-bold mb-3">Tür</h4>
+                        <div class="flex flex-wrap gap-2">
+                            ${(omdbData?.Genre || movie.genre).split(',').map(g => `<span class="px-3 py-1 bg-gray-800 rounded-lg text-sm text-gray-300 border border-gray-700">${translateGenre(g)}</span>`).join('')}
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <h4 class="text-xs uppercase tracking-widest text-brand-red font-bold mb-3 flex items-center gap-2">
+                            <i class="fas fa-align-left"></i> Konu
+                        </h4>
+                        <p class="text-gray-300 leading-relaxed font-light text-lg">
+                            ${turkceOzet}
+                        </p>
+                    </div>
+
+                    <div class="mb-6">
+                        <h4 class="text-xs uppercase tracking-widest text-gray-500 font-bold mb-3">Gurme Notu</h4>
+                         <p class="text-gray-400 italic border-l-2 border-brand-red pl-3 text-sm">
+                            "${movie.reason}"
+                        </p>
+                    </div>
+
+                    ${omdbData?.Actors ? `
+                    <div class="mb-6">
+                         <h4 class="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2">Oyuncular</h4>
+                         <p class="text-sm text-gray-400">${omdbData.Actors}</p>
+                    </div>` : ''}
+
+                    <div class="mt-auto pt-6 border-t border-gray-800 flex flex-col gap-3">
+                        <div class="flex gap-3">
+                            <a href="${trailerUrl}" target="_blank" class="flex-1 bg-brand-red hover:bg-red-700 text-white text-center py-3 rounded-xl font-bold transition-all shadow-lg shadow-red-900/20 active:scale-95 flex items-center justify-center gap-2">
+                                <i class="fas fa-play"></i> Fragman İzle
+                            </a>
+                            <a href="https://www.google.com/search?q=${encodeURIComponent(movie.title + ' izle')}" target="_blank" class="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-center py-3 rounded-xl font-medium transition-all border border-gray-700 flex items-center justify-center gap-2">
+                                 Google <i class="fas fa-external-link-alt text-xs"></i>
+                            </a>
+                        </div>
+                        <button onclick="toggleWatchlist('${movie.title.replace(/'/g, "\\'")}')" class="w-full bg-gray-900 hover:bg-gray-800 text-gray-400 py-3 rounded-xl font-medium transition-colors border border-gray-800 flex items-center justify-center gap-2 hover:text-white hover:border-gray-600">
+                            <i class="fas fa-bookmark"></i> Listeye Ekle / Çıkar
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function surpriseMe() {
+            const prompts = [
+                "Bana izleyince 'bunu nasıl daha önce görmedim' dedirtecek, az bilinen bir Avrupa filmi öner",
+                "Tek bir odada geçen ama gerilimi hiç düşmeyen, klostrofobik filmler",
+                "Sonunu asla tahmin edemeyeceğim, beynimi yakacak bir Güney Kore filmi",
+                "Soundtrack'i başyapıt olan ama hak ettiği değeri görmemiş bağımsız filmler",
+                "Tarantino seven birinin bayılacağı ama Tarantino'nun çekmediği suç filmleri",
+                "Bilim kurgu ama uzayda geçmeyen, distopik ve düşündürücü filmler",
+                "Gece yarısı izlenecek, kanlı olmayan ama tüyleri diken diken eden psikolojik korku",
+                "İzledikten sonra hayatı sorgulatan, varoluşsal sancılar çektiren melankolik filmler",
+                "Sadece görsel estetiği için bile izlenecek, tab gibi shot'ları olan filmler",
+                "Absürt mizahı olan, Wes Anderson tadında ama daha karanlık filmler"
+            ];
+            const randomPrompt = prompts[Math.floor(Math.random() * prompts.length)];
+
+            const input = document.getElementById('user-prompt');
+            input.value = "";
+            let i = 0;
+            const typeVar = setInterval(() => {
+                input.value += randomPrompt.charAt(i);
+                i++;
+                if (i > randomPrompt.length) {
+                    clearInterval(typeVar);
+                    handleSearch({ preventDefault: () => { } });
+                }
+            }, 20);
+        }
+
+        function quickSearch(text) {
+            document.getElementById('user-prompt').value = text;
+            handleSearch({ preventDefault: () => { } });
+        }
+
+        function closeModal() {
+            document.getElementById('movie-modal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+            setTimeout(() => { document.getElementById('modal-content').innerHTML = ''; }, 300);
+        }
+
+        document.getElementById('movie-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'movie-modal') closeModal();
+        });
+
+    </script>
+</body>
+
+</html>```
